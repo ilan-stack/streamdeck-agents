@@ -1,0 +1,27 @@
+{
+  "_comment": "Copy to profile.json (install.sh does it). {home} = this folder, {actions} = actions/, {page}/{key} = where the key sits. Keys 0-3 = top row, 4-7 = bottom row. Touch strips flip pages. Edit here or in the dashboard at http://127.0.0.1:8885",
+  "brightness": 100,
+  "page_idle": 30,
+  "touch_colors": [[110, 110, 120], [0, 110, 255]],
+  "pages": [
+    {"name": "Main", "keys": {
+      "0": {"label": "Mute", "id": "mute", "icon": "volume.png", "cmd": "{actions}/mute.sh", "desc": "mute or unmute the Mac's sound"},
+      "1": {"label": "Layout", "icon": "layout.png", "cmd": "{actions}/clip.sh layout", "desc": "fix the SELECTED text that was typed in the wrong keyboard layout (Hebrew/English)"},
+      "2": {"label": "Screenshot", "icon": "screenshot.png", "cmd": "{actions}/shot.sh", "desc": "take a screenshot of a screen area to the clipboard"},
+      "3": {"label": "Record", "id": "record", "icon": "record.png", "cmd": "{actions}/record.sh {page} {key}", "desc": "start or stop recording a screen area"},
+      "4": {"label": "Calendar", "id": "calendar", "icon": "calendar.png", "cmd": "{actions}/join.sh", "desc": "join the current or next meeting (opens its video link), or open the calendar"},
+      "5": {"label": "Focus", "icon": "focus.png", "cmd": "{actions}/focus.sh", "desc": "start or stop a 25-minute focus timer"},
+      "6": {"label": "Claude", "id": "claude", "icon": "claude.png", "dim": true, "cmd": "{actions}/claude_jump.sh", "desc": "open the Claude session that needs attention"},
+      "7": {"label": "Translate", "icon": "translate.png", "cmd": "{actions}/clip.sh translate", "desc": "translate the SELECTED text (Hebrew to English, anything else to Hebrew)"}
+    }},
+    {"name": "More", "keys": {
+      "0": {"label": "Improve", "icon": "improve.png", "cmd": "{actions}/clip.sh improve", "desc": "rewrite the SELECTED text so it reads better"},
+      "1": {"label": "Talk", "icon": "mic.png", "down": "{actions}/talk.sh start", "up": "{actions}/talk.sh stop"}
+    }}
+  ],
+  "notify": {
+    "mute": {"id": "mute"},
+    "claude": {"id": "claude"},
+    "calendar": {"id": "calendar", "source": "eventkit", "filter": "", "hint": "📅"}
+  }
+}

@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="deck-token" content="__DECK_TOKEN__">
+<title>Stream Deck</title>
+<link rel="stylesheet" href="/dashboard/tokens.css">
+<style>
+  :root { --key: 92px; --gap: 14px; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ds-canvas); color: var(--ds-body); font-family: var(--ds-font-ui); }
+  header { display: flex; align-items: center; gap: var(--ds-space-md); padding: var(--ds-space-md) var(--ds-space-lg);
+           border-bottom: 1px solid var(--ds-hairline); position: sticky; top: 0; background: var(--ds-canvas); z-index: 5; }
+  header h1 { font-size: 17px; margin: 0; color: var(--ds-ink); font-weight: 600; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ds-muted-soft); display: inline-block; }
+  .dot.on { background: var(--ds-success); box-shadow: 0 0 8px var(--ds-success); }
+  .conn { font-size: 13px; color: var(--ds-muted); display: flex; align-items: center; gap: 6px; }
+  .spacer { flex: 1; }
+  button { font: inherit; font-size: 14px; border-radius: var(--ds-radius-md); padding: 8px 14px; cursor: pointer;
+           border: 1px solid var(--ds-hairline); background: var(--ds-surface-card); color: var(--ds-body-strong); }
+  button:hover { background: var(--ds-surface-strong); }
+  button.primary { background: var(--ds-btn-bg); border-color: var(--ds-btn-edge); color: var(--ds-on-accent); font-weight: 600; }
+  button.primary:hover { background: var(--ds-btn-bg-hover); }
+  button:disabled { opacity: .45; cursor: default; }
+  button.danger { color: var(--ds-error); }
+  button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--ds-accent); outline-offset: 2px; }
+
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: var(--ds-space-lg); padding: var(--ds-space-lg); max-width: 1200px; margin: 0 auto; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: var(--ds-space-md); align-items: center; }
+  .tab { padding: 7px 14px; border-radius: var(--ds-radius-pill); border: 1px solid var(--ds-hairline); background: var(--ds-surface-soft);
+         color: var(--ds-body); cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 8px; user-select: none; }
+  .tab .led { width: 10px; height: 4px; border-radius: 2px; }
+  .tab.active { background: var(--ds-accent-soft); color: var(--ds-on-accent); border-color: var(--ds-btn-edge); }
+  :root[data-theme="dark"] .tab.active { background: var(--ds-surface-strong); color: var(--ds-ink); border-color: var(--ds-accent); }
+  .tab.dragover { outline: 2px dashed var(--ds-accent); }
+  .tab.add { background: transparent; border-style: dashed; }
+
+  /* the device */
+  .device { direction: ltr; width: fit-content; margin: var(--ds-space-lg) auto; padding: 26px 28px 22px; border-radius: 28px;
+            background: linear-gradient(160deg, #2b2b2e, #18181a); box-shadow: 0 20px 50px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06); }
+  .grid { display: grid; grid-template-columns: repeat(4, var(--key)); gap: var(--gap); }
+  .key { width: var(--key); height: var(--key); border-radius: 14px; background: #0b0b0c; position: relative; cursor: grab;
+         box-shadow: inset 0 0 0 2px #050505, 0 2px 0 #000; display: grid; place-items: center; overflow: hidden; }
+  .key .face { width: 82%; height: 82%; border-radius: 9px; background: #2c2c2e; display: grid; place-items: center; overflow: hidden; }
+  .key img { width: 92%; height: 92%; object-fit: contain; pointer-events: none; }
+  .key .txt { color: #fff; font-size: 13px; text-align: center; padding: 4px; word-break: break-word; }
+  .key.empty { cursor: default; }
+  .key.empty .face { background: #121214; }
+  .key.selected { box-shadow: inset 0 0 0 2px #050505, 0 0 0 3px var(--ds-accent); }
+  .key.dragover { box-shadow: inset 0 0 0 2px #050505, 0 0 0 3px var(--ds-warning); }
+  .key.dragging { opacity: .35; }
+  .live { position: absolute; top: 5px; left: 5px; font-size: 9px; letter-spacing: .04em; background: #ff3b30; color: #fff;
+          border-radius: 6px; padding: 1px 5px; font-weight: 700; }
+  .barrow { display: flex; align-items: center; gap: 18px; margin-top: 20px; justify-content: center; }
+  .touch { width: 46px; height: 6px; border-radius: 3px; }
+  .bar { width: 230px; height: 54px; border-radius: 8px; background: #050506; color: #fff; display: flex; flex-direction: column;
+         align-items: center; justify-content: center; box-shadow: inset 0 0 0 1px #222; }
+  .bar b { font-size: 22px; font-weight: 600; letter-spacing: .02em; }
+  .bar small { font-size: 11px; color: #8b949e; }
+  .hint { text-align: center; color: var(--ds-muted); font-size: 13px; margin-top: 4px; }
+
+  .tray { margin-top: var(--ds-space-lg); border: 1px dashed var(--ds-hairline); border-radius: var(--ds-radius-lg); padding: var(--ds-space-md); }
+  .tray h3 { margin: 0 0 var(--ds-space-sm); font-size: 14px; color: var(--ds-muted); font-weight: 600; }
+  .tray .items { direction: ltr; display: flex; flex-wrap: wrap; gap: 10px; min-height: var(--key); }
+  .tray.dragover { border-color: var(--ds-accent); background: var(--ds-surface-soft); }
+  .tray .empty-note { color: var(--ds-muted-soft); font-size: 13px; align-self: center; direction: rtl; }
+
+  aside { background: var(--ds-surface-soft); border: 1px solid var(--ds-hairline); border-radius: var(--ds-radius-xl);
+          padding: var(--ds-space-lg); align-self: start; position: sticky; top: 76px; }
+  aside h2 { margin: 0 0 var(--ds-space-md); font-size: 16px; color: var(--ds-ink); }
+  .preview { width: 120px; height: 120px; border-radius: 16px; background: #2c2c2e; margin: 0 auto var(--ds-space-md);
+             display: grid; place-items: center; overflow: hidden; }
+  .preview img { width: 92%; height: 92%; object-fit: contain; }
+  label { display: block; font-size: 13px; color: var(--ds-muted); margin: var(--ds-space-sm) 0 4px; }
+  input[type=text], textarea { width: 100%; font: inherit; font-size: 14px; padding: 8px 10px; border-radius: var(--ds-radius-md);
+         border: 1px solid var(--ds-hairline); background: var(--ds-canvas); color: var(--ds-ink); }
+  textarea { font-family: var(--ds-font-code); font-size: 12px; direction: ltr; min-height: 70px; resize: vertical; }
+  .note { font-size: 12px; color: var(--ds-muted-soft); margin-top: 4px; line-height: 1.5; }
+  .icons { direction: ltr; display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-top: 6px; max-height: 190px; overflow: auto;
+           padding: 4px; background: var(--ds-canvas); border-radius: var(--ds-radius-md); border: 1px solid var(--ds-hairline); }
+  .icons button { padding: 0; aspect-ratio: 1; background: #2c2c2e; border: 2px solid transparent; border-radius: 8px; }
+  .icons button.cur { border-color: var(--ds-accent); }
+  .icons img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .row { display: flex; gap: 8px; margin-top: var(--ds-space-md); flex-wrap: wrap; }
+  .pill { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: var(--ds-radius-pill); background: var(--ds-surface-strong); color: var(--ds-muted); }
+  input[type=color] { width: 44px; height: 30px; border: 1px solid var(--ds-hairline); border-radius: 6px; background: none; padding: 2px; }
+  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--ds-surface-dark-elevated); color: var(--ds-on-dark);
+           padding: 10px 18px; border-radius: var(--ds-radius-pill); font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  .empty-aside { color: var(--ds-muted); font-size: 14px; line-height: 1.7; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Stream Deck Neo</h1>
+  <span class="conn"><span class="dot" id="dot"></span><span id="connText">…</span></span>
+  <span class="spacer"></span>
+  <button id="revert" disabled>Discard changes</button>
+  <button id="save" class="primary" disabled>Save to deck</button>
+</header>
+
+<main>
+  <section>
+    <div class="tabs" id="tabs"></div>
+    <div class="device">
+      <div class="grid" id="grid"></div>
+      <div class="barrow">
+        <span class="touch" id="t1"></span>
+        <div class="bar"><b id="clock">--:--</b><small id="date"></small></div>
+        <span class="touch" id="t2"></span>
+      </div>
+    </div>
+    <div class="hint">Drag a key onto another to swap them · drop it on a tab to move it to that page · drop an image on a key to change its icon</div>
+
+    <div class="tray" id="tray">
+      <h3>Drawer - keys taken off the deck (drag here to remove, drag back to restore)</h3>
+      <div class="items" id="trayItems"></div>
+    </div>
+  </section>
+
+  <aside id="inspector"></aside>
+</main>
+<input type="file" id="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+<div class="toast" id="toast"></div>
+
+<script>
+let TOKEN = document.querySelector('meta[name="deck-token"]').content;
+// the service makes a new token on every restart - fetch the current one before each write
+async function api(path, body) {
+  try { TOKEN = (await (await fetch('/api/token', { cache: 'no-store' })).json()).token || TOKEN; } catch {}
+  const r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Deck-Token': TOKEN },
+                                body: JSON.stringify(body) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok && !d.error) d.error = 'HTTP ' + r.status;
+  return d;
+}
+const DEFAULT_TOUCH = [[110,110,120],[0,110,255],[170,60,255],[255,140,0],[0,180,120]];
+let profile, saved, icons = [], cur = 0, sel = null;   // sel = {page, key} | {tray: i}
+let drag = null;
+
+const $ = id => document.getElementById(id);
+const clone = o => JSON.parse(JSON.stringify(o));
+const toast = msg => { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2400); };
+const rgb = c => `rgb(${c[0]},${c[1]},${c[2]})`;
+const hex = c => '#' + c.map(v => v.toString(16).padStart(2, '0')).join('');
+const unhex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+const liveIds = () => new Set(Object.values(profile.notify || {}).map(n => n.id).filter(Boolean));
+
+async function load() {
+  const r = await fetch('/api/profile'); const d = await r.json();
+  profile = d.profile; icons = d.icons;
+  profile.tray = profile.tray || [];
+  profile.touch_colors = profile.touch_colors || DEFAULT_TOUCH.slice(0, profile.pages.length);
+  saved = clone(profile);                               // snapshot AFTER normalising, or it starts "dirty"
+  cur = Math.min(d.page || 0, profile.pages.length - 1);
+  setConn(d.connected); render();
+}
+function setConn(on) { $('dot').classList.toggle('on', on); $('connText').textContent = on ? 'Connected' : 'Not connected'; }
+function dirty() { const d = JSON.stringify(profile) !== JSON.stringify(saved); $('save').disabled = !d; $('revert').disabled = !d; }
+
+function getSpec(s) { return s.tray !== undefined ? profile.tray[s.tray] : profile.pages[s.page].keys[s.key]; }
+function setSpec(s, v) {
+  if (s.tray !== undefined) { if (v) profile.tray[s.tray] = v; else profile.tray.splice(s.tray, 1); return; }
+  if (v) profile.pages[s.page].keys[s.key] = v; else delete profile.pages[s.page].keys[s.key];
+}
+
+function keyEl(spec, s) {
+  const el = document.createElement('div'); el.className = 'key' + (spec ? '' : ' empty');
+  const face = document.createElement('div'); face.className = 'face'; el.appendChild(face);
+  if (spec) {
+    if (spec.icon) { const img = new Image(); img.src = '/icons/' + spec.icon; img.alt = spec.label || ''; face.appendChild(img); }
+    else { face.style.background = spec.color || '#30363d'; const t = document.createElement('div'); t.className = 'txt'; t.textContent = spec.label || ''; face.appendChild(t); }
+    if (spec.id && liveIds().has(spec.id)) { const l = document.createElement('span'); l.className = 'live'; l.textContent = 'LIVE'; el.appendChild(l); }
+    el.draggable = true; el.title = spec.label || '';
+    el.addEventListener('dragstart', e => { drag = s; el.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
+    el.addEventListener('dragend', () => { el.classList.remove('dragging'); drag = null; });
+    el.addEventListener('click', () => { sel = s; render(); });
+  }
+  if (sel && JSON.stringify(sel) === JSON.stringify(s)) el.classList.add('selected');
+  // drop: another key (swap / move) or an image file (new icon)
+  el.addEventListener('dragover', e => { if (s.tray === undefined) { e.preventDefault(); el.classList.add('dragover'); } });
+  el.addEventListener('dragleave', () => el.classList.remove('dragover'));
+  el.addEventListener('drop', async e => {
+    e.preventDefault(); el.classList.remove('dragover');
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) { if (!spec) return toast('Drop the image on an existing key'); const name = await upload(f); if (name) { spec.icon = name; sel = s; render(); } return; }
+    if (drag) move(drag, s);
+  });
+  return el;
+}
+
+function move(from, to) {
+  const a = getSpec(from), b = to.tray === undefined ? getSpec(to) : undefined;
+  if (from.tray !== undefined && to.tray === undefined) {            // tray -> slot
+    profile.tray.splice(from.tray, 1); if (b) profile.tray.push(b); setSpec(to, a);
+  } else if (from.tray === undefined) {                               // slot -> slot (swap)
+    setSpec(from, b); setSpec(to, a);
+  }
+  sel = to; render();
+}
+
+function render() {
+  // tabs
+  const tabs = $('tabs'); tabs.innerHTML = '';
+  profile.pages.forEach((pg, i) => {
+    const t = document.createElement('div'); t.className = 'tab' + (i === cur ? ' active' : '');
+    const led = document.createElement('span'); led.className = 'led'; led.style.background = rgb(profile.touch_colors[i] || DEFAULT_TOUCH[i % 5]);
+    t.append(led, document.createTextNode(pg.name));
+    t.onclick = () => { cur = i; sel = null; render(); };
+    t.ondblclick = () => { const n = prompt('Page name', pg.name); if (n) { pg.name = n; render(); } };
+    t.addEventListener('dragover', e => { e.preventDefault(); t.classList.add('dragover'); });
+    t.addEventListener('dragleave', () => t.classList.remove('dragover'));
+    t.addEventListener('drop', e => {
+      e.preventDefault(); t.classList.remove('dragover'); if (!drag) return;
+      const free = [0,1,2,3,4,5,6,7].find(k => !(k in pg.keys));
+      if (free === undefined) return toast('That page is full - drop onto a key to swap');
+      cur = i; move(drag, { page: i, key: free });
+    });
+    tabs.appendChild(t);
+  });
+  if (profile.pages.length < 5) {
+    const add = document.createElement('div'); add.className = 'tab add'; add.textContent = '+ Page';
+    add.onclick = () => { profile.pages.push({ name: 'Page ' + (profile.pages.length + 1), keys: {} });
+      profile.touch_colors.push(DEFAULT_TOUCH[(profile.pages.length - 1) % 5]); cur = profile.pages.length - 1; render(); };
+    tabs.appendChild(add);
+  }
+  // grid
+  const grid = $('grid'); grid.innerHTML = '';
+  for (let k = 0; k < 8; k++) grid.appendChild(keyEl(profile.pages[cur].keys[k], { page: cur, key: k }));
+  const c = rgb(profile.touch_colors[cur] || DEFAULT_TOUCH[cur % 5]);
+  $('t1').style.background = $('t2').style.background = c;
+  $('t1').style.boxShadow = $('t2').style.boxShadow = `0 0 10px ${c}`;
+  // tray
+  const ti = $('trayItems'); ti.innerHTML = '';
+  if (!profile.tray.length) { const n = document.createElement('span'); n.className = 'empty-note'; n.textContent = 'Empty'; ti.appendChild(n); }
+  profile.tray.forEach((spec, i) => ti.appendChild(keyEl(spec, { tray: i })));
+  inspector(); tick(); dirty();
+}
+
+$('tray').addEventListener('dragover', e => { if (drag && drag.tray === undefined) { e.preventDefault(); $('tray').classList.add('dragover'); } });
+$('tray').addEventListener('dragleave', () => $('tray').classList.remove('dragover'));
+$('tray').addEventListener('drop', e => {
+  e.preventDefault(); $('tray').classList.remove('dragover');
+  if (drag && drag.tray === undefined) { profile.tray.push(getSpec(drag)); setSpec(drag, null); sel = null; render(); }
+});
+
+function inspector() {
+  const box = $('inspector'); box.innerHTML = '';
+  const spec = sel && getSpec(sel);
+  if (!spec) {
+    const pg = profile.pages[cur];
+    box.innerHTML = `<h2>Page: ${escapeHtml(pg.name)}</h2>
+      <div class="empty-aside">Click a key to edit its name, command and icon.<br>Double-click a tab to rename the page.</div>
+      <label>Touch-strip colour on this page</label>
+      <input type="color" id="pcolor" value="${hex(profile.touch_colors[cur] || DEFAULT_TOUCH[cur % 5])}">
+      <div class="row"><button class="danger" id="delpage" ${Object.keys(pg.keys).length || profile.pages.length === 1 ? 'disabled' : ''}>Delete page (only when empty)</button></div>`;
+    $('pcolor').oninput = e => { profile.touch_colors[cur] = unhex(e.target.value); render(); };
+    $('delpage').onclick = () => { profile.pages.splice(cur, 1); profile.touch_colors.splice(cur, 1); cur = Math.max(0, cur - 1); render(); };
+    return;
+  }
+  const live = spec.id && liveIds().has(spec.id);
+  box.innerHTML = `<h2>${escapeHtml(spec.label || 'Key')} ${live ? '<span class="pill">LIVE · ' + spec.id + '</span>' : ''}</h2>
+    <div class="preview" id="pv"></div>
+    <label for="lbl">Name</label><input type="text" id="lbl" value="${escapeHtml(spec.label || '')}">
+    <label>Icon</label>
+    <div class="row" style="margin-top:0"><button id="up">Upload image…</button>${spec.icon ? '<button id="noicon">No icon</button>' : ''}</div>
+    <div class="icons" id="lib"></div>
+    <label for="desc">Description for voice control</label><input type="text" id="desc" value="${escapeHtml(spec.desc || '')}" placeholder="What the key does - voice control uses this to pick it">
+    <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="confirm" ${spec.confirm ? 'checked' : ''}> Ask for a Yes on the deck before voice runs it</label>
+    <label for="cmd">Command on press</label><textarea id="cmd">${escapeHtml(spec.cmd || '')}</textarea>
+    ${spec.down || spec.up ? `<div class="note">Hold key: down = ${escapeHtml(spec.down || '')} · up = ${escapeHtml(spec.up || '')}</div>` : ''}
+    <div class="note">{actions} = the actions folder · {page} {key} = where the key currently sits${live ? '<br>This key's live badge follows it wherever it moves.' : ''}</div>
+    <div class="row">${sel.tray === undefined ? '<button id="totray">Move to drawer</button>' : ''}</div>`;
+  const pv = $('pv');
+  if (spec.icon) { const img = new Image(); img.src = '/icons/' + spec.icon; pv.appendChild(img); }
+  else { pv.style.background = spec.color || '#30363d'; pv.innerHTML = `<span style="color:#fff">${escapeHtml(spec.label || '')}</span>`; }
+  const lib = $('lib');
+  icons.forEach(n => { const b = document.createElement('button'); b.className = n === spec.icon ? 'cur' : ''; b.title = n;
+    const im = new Image(); im.src = '/icons/' + n; b.appendChild(im);
+    b.onclick = () => { spec.icon = n; render(); }; lib.appendChild(b); });
+  $('lbl').oninput = e => { spec.label = e.target.value; dirty(); };
+  $('lbl').onchange = () => render();
+  $('desc').oninput = e => { if (e.target.value) spec.desc = e.target.value; else delete spec.desc; dirty(); };
+  $('confirm').onchange = e => { if (e.target.checked) spec.confirm = true; else delete spec.confirm; dirty(); };
+  $('cmd').oninput = e => { if (e.target.value) spec.cmd = e.target.value; else delete spec.cmd; dirty(); };
+  $('up').onclick = () => { const f = $('file'); f.onchange = async () => { if (f.files[0]) { const n = await upload(f.files[0]); if (n) { spec.icon = n; render(); } } f.value = ''; }; f.click(); };
+  if ($('noicon')) $('noicon').onclick = () => { delete spec.icon; render(); };
+  if ($('totray')) $('totray').onclick = () => { profile.tray.push(spec); setSpec(sel, null); sel = null; render(); };
+}
+
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+async function upload(file) {
+  if (file.size > 10 * 1024 * 1024) { toast('Image too large (max 10 MB)'); return null; }
+  const data = await new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(file); });
+  const d = await api('/api/icon', { name: file.name, data });
+  if (!d.ok) { toast('Upload failed: ' + d.error); return null; }
+  icons = d.icons; toast('Icon added - remember to save'); return d.icon;
+}
+
+$('save').onclick = async () => {
+  $('save').disabled = true;
+  const out = clone(profile); if (!out.tray.length) delete out.tray;
+  const d = await api('/api/profile', { profile: out });
+  if (d.ok) { saved = clone(profile); toast('Saved - the deck updated'); dirty(); }
+  else { toast('Save failed: ' + d.error); dirty(); }
+};
+$('revert').onclick = () => { profile = clone(saved); profile.tray = profile.tray || []; sel = null; render(); };
+window.addEventListener('beforeunload', e => { if (!$('save').disabled) { e.preventDefault(); e.returnValue = ''; } });
+
+function tick() {
+  const n = new Date();
+  $('clock').textContent = n.toTimeString().slice(0, 5);
+  const dots = profile && profile.pages.length > 1 ? '   ' + profile.pages.map((_, i) => i === cur ? '●' : '○').join(' ') : '';
+  $('date').textContent = n.toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short' }).replace(',', '') + dots;
+}
+setInterval(tick, 10000);
+setInterval(async () => { try { const d = await (await fetch('/state')).json(); setConn(d.connected); } catch { setConn(false); } }, 5000);
+load();
+</script>
+</body>
+</html>

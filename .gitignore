@@ -1,0 +1,14 @@
+# per-machine / generated
+profile.json
+.venv/
+state/
+lib/
+bin/
+icons/
+wheels/
+run.sh
+run_notify.sh
+actions/_env.sh
+*.log
+__pycache__/
+.DS_Store

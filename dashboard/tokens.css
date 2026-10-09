@@ -1,0 +1,137 @@
+/* ============================================================
+   Design tokens - Ilan's default system
+   Neutral prefix (--ds-) so this drops into any project.
+   Origin: distilled from lens/src/tokens.css (the most complete
+   of ~40 token blocks across projects). Warm cream + forest green.
+   Swap the hex values per brand; keep the STRUCTURE and the
+   contrast relationships - those are the part that took work.
+   ============================================================ */
+
+:root {
+  /* === SURFACES (warm cream hierarchy) === */
+  --ds-canvas: #faf9f5;              /* default page floor */
+  --ds-surface-soft: #f5f0e8;        /* section dividers */
+  --ds-surface-card: #efe9de;        /* feature + content cards */
+  --ds-surface-strong: #e8e0d2;
+  --ds-surface-dark: #181715;        /* dark cards, footer */
+  --ds-surface-dark-elevated: #252320;
+
+  /* === TEXT === */
+  --ds-ink: #141413;                 /* headlines, primary */
+  --ds-body-strong: #252523;         /* emphasized prose */
+  --ds-body: #3d3d3a;                /* default running text */
+  --ds-muted: #6c6a64;               /* sub-headings, captions */
+  --ds-muted-soft: #8e8b82;          /* fine print */
+  --ds-on-dark: #faf9f5;
+  --ds-on-dark-soft: #a09d96;
+
+  /* === BORDERS === */
+  --ds-hairline: #e6dfd8;
+  --ds-hairline-soft: #ebe6df;
+
+  /* === ACCENT - two-tone, WCAG 2.2 AA aligned ===
+     btn-bg / btn-edge: soft surface + mid border (3:1 for UI shapes)
+     accent: deep tone for links, focus rings, brand (4.5:1 for text)
+     Do not collapse these into one colour. That is the bug this
+     two-tone split exists to prevent. */
+  --ds-btn-bg: #b4cbc3;
+  --ds-btn-bg-hover: #a3bcb3;
+  --ds-btn-edge: #7ea597;
+  --ds-btn-edge-hover: #6a917f;
+  --ds-accent: #2a4d3a;
+  --ds-accent-hover: #1f3a2c;
+  --ds-accent-soft: #d8e6db;
+  --ds-on-accent: #ffffff;
+
+  /* === SEMANTIC === */
+  --ds-success: #5b8d6a;
+  --ds-warning: #c69a17;
+  --ds-error: #b34a3a;
+
+  /* === TYPOGRAPHY === */
+  --ds-font-display: "Atkinson Hyperlegible", -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+  --ds-font-body: "Atkinson Hyperlegible", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --ds-font-ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --ds-font-code: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* === SPACING (4px base) === */
+  --ds-space-xxs: 4px;
+  --ds-space-xs: 8px;
+  --ds-space-sm: 12px;
+  --ds-space-md: 16px;
+  --ds-space-lg: 24px;
+  --ds-space-xl: 32px;
+  --ds-space-xxl: 48px;
+  --ds-space-section: 96px;
+
+  /* === RADIUS === */
+  --ds-radius-xs: 4px;
+  --ds-radius-sm: 6px;
+  --ds-radius-md: 8px;
+  --ds-radius-lg: 12px;
+  --ds-radius-xl: 16px;
+  --ds-radius-pill: 9999px;
+
+  /* === GLASS (see glass.css for the full panel recipe) === */
+  --ds-glass-bg: rgba(255, 255, 255, 0.10);
+  --ds-glass-border: rgba(255, 255, 255, 0.18);
+  --ds-glass-blur: 16px;
+  --ds-glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.24);
+}
+
+/* Explicit dark choice wins in both directions. */
+:root[data-theme="dark"] {
+  --ds-canvas: #181715;
+  --ds-surface-soft: #1f1e1b;
+  --ds-surface-card: #252320;
+  --ds-surface-strong: #2a2823;
+  --ds-ink: #faf9f5;
+  --ds-body-strong: #ececec;
+  --ds-body: #d4d2cc;
+  --ds-muted: #a09d96;
+  --ds-muted-soft: #76746e;
+  --ds-hairline: #2a2823;
+  --ds-hairline-soft: #1f1e1b;
+  --ds-btn-bg: #7ea597;
+  --ds-btn-bg-hover: #91b6a8;
+  --ds-btn-edge: #b4cbc3;
+  --ds-btn-edge-hover: #c8dad3;
+  --ds-accent: #9bc7a6;
+  --ds-accent-hover: #b1d5b9;
+  --ds-on-accent: #0f1a13;
+  --ds-glass-bg: rgba(255, 255, 255, 0.06);
+  --ds-glass-border: rgba(255, 255, 255, 0.12);
+}
+
+/* System default: no data-theme attribute is set at all, so guard
+   against an explicit light choice rather than keying on [data-theme="system"]. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ds-canvas: #181715;
+    --ds-surface-soft: #1f1e1b;
+    --ds-surface-card: #252320;
+    --ds-surface-strong: #2a2823;
+    --ds-ink: #faf9f5;
+    --ds-body-strong: #ececec;
+    --ds-body: #d4d2cc;
+    --ds-muted: #a09d96;
+    --ds-muted-soft: #76746e;
+    --ds-hairline: #2a2823;
+    --ds-hairline-soft: #1f1e1b;
+    --ds-btn-bg: #7ea597;
+    --ds-btn-bg-hover: #91b6a8;
+    --ds-btn-edge: #b4cbc3;
+    --ds-btn-edge-hover: #c8dad3;
+    --ds-accent: #9bc7a6;
+    --ds-accent-hover: #b1d5b9;
+    --ds-on-accent: #0f1a13;
+    --ds-glass-bg: rgba(255, 255, 255, 0.06);
+    --ds-glass-border: rgba(255, 255, 255, 0.12);
+  }
+}
+
+/* RTL: logical properties only. In RTL, w:jc-style "right" alignment
+   flips wrong - use start/end everywhere. */
+[dir="rtl"] { direction: rtl; }
+.ds-text-start { text-align: start; }
+.ds-text-end { text-align: end; }
