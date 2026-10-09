@@ -3,7 +3,8 @@
 **A Stream Deck Neo as a physical interface for AI coding agents.** No Elgato software: a small Python daemon drives the
 device over USB, and Claude Code talks to it through hooks and an MCP server. Agents ask permission on a key, show a
 progress bar, and pause or stop when you press. A page shows every running session. Hold a key and speak, and a small
-model picks which key to press.
+model picks which key to press, or closes an app or a site's tab ("close the Gmail"). Follow-ups work for 90 s
+("quit Chrome or open it?" - "quit it").
 
 Write-up: **[Eight keys between me and the agents](https://ilans.net/writing/eight-keys-between-me-and-the-agents.html)**
 
@@ -25,7 +26,10 @@ Write-up: **[Eight keys between me and the agents](https://ilans.net/writing/eig
 - **Sessions page.** Hooks track every Claude Code session (working / done / waiting for you); a page builds itself
   while sessions exist, named like the Claude app's sidebar, and a press jumps to that session.
 - **Voice.** Hold Talk, speak (Hebrew or English): local whisper.cpp transcribes, Claude Haiku picks **one** action from
-  a closed list (your keys + timer / note / page). Keys marked `confirm` ask for a Yes on the deck first.
+  a closed list (your keys + timer / note / page / close an app / close a tab). Keys marked `confirm` ask for a Yes on the deck first.
+- **Double press to close.** A key that opens an app quits it on a double press (like Cmd+Q - it may ask to save);
+  a key that opens a link closes that site's tab, only if one is actually showing it. Only those keys wait a third of a
+  second to tell single from double; every other key stays instant and ignores an accidental second press.
 - **Text keys.** Select text anywhere and press: wrong-keyboard-layout fix (no AI), translate, improve. Replaced in place.
 - **Dashboard** at `http://127.0.0.1:8885`: drag keys between slots and pages, drop an image on a key to change its icon,
   edit commands, park keys in a drawer. Saves straight to the device, with backups.
@@ -63,7 +67,8 @@ starts two LaunchAgents. Re-run it any time; `./uninstall.sh` removes the servic
 Then grant two macOS permissions (they're the hard part, see [why](#macos-permissions)):
 1. **Accessibility** → add the `Python.app` path the installer prints (it's on your clipboard) - for keys that send
    keystrokes (layout fix, translate, screenshot, record).
-2. **Calendars** and **Microphone** prompts appear the first time, in the name of "StreamDeck Calendar" / "StreamDeck Mic".
+2. **Calendars**, **Microphone** and **Automation** ("control Google Chrome") prompts appear the first time, in the
+   name of "StreamDeck Calendar" / "StreamDeck Mic" / "StreamDeck Tabs".
 
 Optional:
 - **API key** for translate / improve / voice: `~/.config/streamdeck/anthropic_key` (or `ANTHROPIC_API_KEY`). Uses
@@ -94,14 +99,16 @@ tasks over a minute, `deck_show` for one final result.
 - **Keys added from a chat may only open an app, open a link, or run an existing `actions/` script.** Anything else must
   be entered in the dashboard. An agent that read a malicious page must not be able to plant `curl … | sh` on a key you'll
   press later. (Quoted links are checked for `$` and backticks too - double quotes still expand them.)
-- Voice can only trigger existing keys and four built-ins, never a free-form command.
+- Voice can only trigger existing keys and a handful of built-ins, never a free-form command. Websites are closed as
+  tabs, never by quitting the browser; apps are asked to quit, never killed.
 
 ## macOS permissions
 
 The daemon is a background process started by launchd, and macOS privacy prompts are designed for apps a person
 launches. What that meant in practice:
 - A background Python is never shown the Microphone or Calendars prompt, and the Microphone list has no "+" button.
-  So recording and calendar access live in tiny `.app` bundles with their own usage descriptions, started with `open`.
+  So recording, calendar access and browser control live in tiny `.app` bundles with their own usage descriptions,
+  started with `open`. Quitting apps uses `NSRunningApplication.terminate()`, which needs no grant at all.
 - Permissions are checked against the binary that was launched - the venv's `python` symlink doesn't count, so the
   services run the real `Python.app` with `PYTHONPATH` pointing at the venv.
 - AppleScript keystrokes are refused as "osascript"; `actions/keys.py` posts CoreGraphics events from Python instead.

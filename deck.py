@@ -19,7 +19,9 @@ import io
 import json
 import os
 import queue
+import re
 import secrets
+import shlex
 import shutil
 import socket
 import subprocess
@@ -334,6 +336,53 @@ def run(cmd):
         subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+# Double press: keys that open an app quit it on a double press (or any key with an explicit "double" command).
+# Only those keys wait DOUBLE_WINDOW before running their single-press command; every other key stays instant.
+DOUBLE_WINDOW = 0.33
+_pending = {}                # key -> Timer for a single press that may still become a double
+
+
+def double_cmd(conf):
+    if conf.get("double"):
+        return conf["double"]
+    m = re.fullmatch(r"open -(a|b) (['\"]?)(.+?)\2", (conf.get("cmd") or "").strip())
+    if m:
+        return f"{os.path.join(HOME, 'actions', 'quit.sh')} {shlex.quote(m.group(3))}"
+    u = re.search(r"https?://([^/\s'\";]+)", conf.get("cmd") or "")      # link key -> close that site's tab
+    if (conf.get("cmd") or "").startswith("open ") and u:
+        return f"{os.path.join(HOME, 'actions', 'closetab.sh')} {shlex.quote(u.group(1))}"
+    return None
+
+
+_last_run = {}               # key -> time its command last ran (keys without a double action)
+REPEAT_GUARD = 0.4           # a second press this soon on such a key is a slip, not "open it twice"
+
+
+def press(key, conf):
+    single, double = conf.get("cmd"), double_cmd(conf)
+    label = conf.get("label", key)
+    if not double:
+        now = time.time()
+        if now - _last_run.get(key, 0) < REPEAT_GUARD:
+            print(f"press {label}: repeat ignored", flush=True)
+            return
+        _last_run[key] = now
+        return run(single)
+    t = _pending.pop(key, None)
+    if t:                                   # second press inside the window: it's a double
+        t.cancel()
+        print(f"press {label}: double -> close", flush=True)
+        return run(double)
+
+    def fire():
+        _pending.pop(key, None)
+        print(f"press {label}: single", flush=True)
+        run(single)
+    t = threading.Timer(DOUBLE_WINDOW, fire)
+    _pending[key] = t
+    t.start()
+
+
 def on_key(_deck, key, state):
     global last_press
     last_press = time.time()
@@ -363,7 +412,10 @@ def on_key(_deck, key, state):
     pg = pages()
     conf = pg[page]["keys"].get(key, {}) if page < len(pg) else {}
     if state:
-        run(conf.get("cmd") or conf.get("down"))
+        if conf.get("down"):
+            run(conf["down"])
+        else:
+            press(key, conf)
     else:
         run(conf.get("up"))
 

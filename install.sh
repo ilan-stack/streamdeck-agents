@@ -72,7 +72,7 @@ else
 fi
 SITE=$(.venv/bin/python -c 'import site; print(site.getsitepackages()[0])')
 
-if [[ ! -x bin/sfsymbol || ! -d "bin/StreamDeck Calendar.app" || ! -d "bin/StreamDeck Mic.app" ]]; then
+if [[ ! -x bin/sfsymbol || ! -x bin/quitapp || ! -d "bin/StreamDeck Calendar.app" || ! -d "bin/StreamDeck Mic.app" || ! -d "bin/StreamDeck Tabs.app" ]]; then
   say "Building the native helpers (bin/)"
   ./tools/build_native.sh || die "Native build failed - is Xcode Command Line Tools installed? (xcode-select --install)"
 fi

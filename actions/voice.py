@@ -7,6 +7,7 @@ Keys with "confirm": true (physical effects) need a Yes on the Neo first.
 """
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -18,6 +19,9 @@ from ask import api_key, MODEL  # noqa: E402
 HOME = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DECK = "http://127.0.0.1:8885"
 LOG = "/tmp/sd_voice.log"
+QUITAPP = os.path.join(HOME, "bin", "quitapp")
+LAST = os.path.join(HOME, "state", "voice_last.json")   # previous exchange, so "yes" can follow a question
+FOLLOW_UP = 90                                          # seconds an exchange stays relevant
 
 
 def deck(path, body=None, timeout=5):
@@ -74,10 +78,25 @@ def context():
         lines.append("Services: " + open(os.path.join(HOME, "state", "status.txt")).read().strip())
     except Exception:
         pass
+    try:
+        apps = subprocess.run([QUITAPP, "--list"], capture_output=True, text=True, timeout=5).stdout.split("\n")
+        lines.append("Running apps: " + ", ".join(a for a in apps if a and a not in ("Finder",)))
+    except Exception:
+        pass
     st = deck("/state")
     if st.get("timer"):
         lines.append(f"A '{st['timer']['label']}' timer is running, {st['timer']['left'] // 60} min left.")
     return "\n".join(lines)
+
+
+def sites(acts):
+    """host -> labels of the keys that open it (two Gmail keys share one host, so they're one site)."""
+    out = {}
+    for a in acts:
+        m = re.search(r"https?://([^/\s'\";]+)", a["cmd"])
+        if a["cmd"].startswith("open ") and m:
+            out.setdefault(m.group(1), []).append(a["label"])
+    return out
 
 
 def tools(acts):
@@ -99,6 +118,16 @@ def tools(acts):
          "description": "Show a short note on the deck's small display for a while (a reminder, a number).",
          "input_schema": {"type": "object", "properties": {
              "text": {"type": "string"}, "seconds": {"type": "number"}}, "required": ["text"]}},
+        {"name": "close_tab",
+         "description": "Close a website's tab in the browser (e.g. Gmail, Facebook). Only closes a tab that is "
+                        "actually showing that site. host = the site's host name. Known sites from the keys: "
+                        + ", ".join(f"{h} ({' / '.join(labels)})" for h, labels in sites(acts).items()) + ". Several keys on one host "
+                        "are one site - just close it, don't ask which.",
+         "input_schema": {"type": "object", "properties": {"host": {"type": "string"}}, "required": ["host"]}},
+        {"name": "quit_app",
+         "description": "Close (quit) a running Mac app, like Cmd+Q - the app may ask to save. Use the exact name "
+                        "from 'Running apps' in the context.",
+         "input_schema": {"type": "object", "properties": {"app": {"type": "string"}}, "required": ["app"]}},
         {"name": "switch_page",
          "description": "Show a different page of keys on the deck.",
          "input_schema": {"type": "object", "properties": {"page": {"type": "integer", "description": "0-based"}},
@@ -110,15 +139,35 @@ SYSTEM = """You are the voice control of the user's Stream Deck (a small key pad
 The user spoke a request (transcribed, may contain small errors; Hebrew or English).
 If the request matches a tool, call exactly ONE tool. If it's a question, answer in at most 20 words,
 plain text, in the user's language, using the context below. Never invent actions that aren't listed.
-If you can't help, say so briefly.
+If you can't help, say so briefly. A website (Gmail, Facebook...) is a browser tab: close it with close_tab,
+never by quitting the browser. To close an app that isn't in "Running apps", say briefly that it isn't open.
+Always either call a tool or reply with text - never return nothing. If the request is ambiguous, ask one short question - the user can answer "yes"
+or with a word on the next press.
 
 Context:
 """
 
 
+def history():
+    try:
+        h = json.load(open(LAST))
+        if time.time() - h["ts"] < FOLLOW_UP:
+            return [{"role": "user", "content": h["q"]}, {"role": "assistant", "content": h["a"]}]
+    except Exception:
+        pass
+    return []
+
+
+def remember(q, a):
+    try:
+        json.dump({"q": q, "a": a, "ts": time.time()}, open(LAST, "w"), ensure_ascii=False)
+    except Exception:
+        pass
+
+
 def ask_claude(text, acts):
     body = {"model": MODEL, "max_tokens": 300, "system": SYSTEM + context(), "tools": tools(acts),
-            "messages": [{"role": "user", "content": text}]}
+            "messages": history() + [{"role": "user", "content": text}]}
     req = urllib.request.Request("https://api.anthropic.com/v1/messages", json.dumps(body).encode(), {
         "x-api-key": api_key(), "anthropic-version": "2023-06-01", "content-type": "application/json"})
     return json.load(urllib.request.urlopen(req, timeout=40))
@@ -145,6 +194,12 @@ def run(tool, inp, acts):
         deck("/timer", {"seconds": mins * 60, "label": inp.get("label") or "Timer"})
     elif tool == "show_on_display":
         bar(inp["text"], float(inp.get("seconds", 30)))
+    elif tool == "close_tab":
+        subprocess.Popen([os.path.join(HOME, "actions", "closetab.sh"), inp["host"]],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    elif tool == "quit_app":
+        subprocess.Popen([os.path.join(HOME, "actions", "quit.sh"), inp["app"]],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     elif tool == "switch_page":
         deck("/page", {"page": int(inp["page"])})
 
@@ -164,6 +219,8 @@ def main():
     if used:
         for b in used[:1]:
             log(text, "->", b["name"], json.dumps(b["input"], ensure_ascii=False))
+            if not dry:
+                remember(text, f"(did {b['name']} {json.dumps(b['input'], ensure_ascii=False)})")
             if dry:
                 a = next((x for x in acts if x["id"] == b["input"].get("action")), {})
                 print(f"TOOL {b['name']} {json.dumps(b['input'], ensure_ascii=False)} {a.get('label', '')}")
@@ -172,6 +229,10 @@ def main():
         return
     answer = " ".join("".join(b.get("text", "") for b in res.get("content", [])).split())
     log(text, "-> answer:", answer)
+    if not answer:
+        answer = "לא הבנתי, אפשר שוב?" if any("\u05d0" <= c <= "\u05ea" for c in text) else "Sorry, I didn't get that."
+    if not dry:
+        remember(text, answer)
     if dry:
         print(f"ANSWER {answer}")
     elif answer:
